@@ -1,15 +1,16 @@
-globals [score snakeLength gameOver speed]
+globals [score snakeLength gameOver speed highscore]
 patches-own [duration]
 
 to setup
-  ca;
-  reset-ticks;
+  ct;
+  cd;
+  cp;
   cro 1 [
     set size 1.5;
     set color red;
     set pcolor red;
     set snakeLength 3;
-    set shape "circle"
+    set shape "face happy"
   ]
   ask patch (min-pxcor + 3) max-pycor [
     set plabel (word "Score: " score);
@@ -27,6 +28,12 @@ to setup
   ]
   set speed 12;
   set score 0;
+  ask patch (min-pxcor + 3) max-pycor [
+    set plabel (word "Score: " score);
+  ]
+  ask patch (min-pxcor + 4.5) (max-pycor - 1) [
+    set plabel (word "Highscore: " highscore);
+  ]
   set gameOver false;
 end
 
@@ -34,25 +41,27 @@ to go
   ifelse not gameOver [
     ask turtle 0[
       fd 1;
-      if pcolor = red [
+      if [duration] of patch-here > 0 [
         ask patch 0 0 [
           set plabel "Game over";
         ]
         set gameOver true;
       ]
-      set pcolor red;
       ask patch-here [
         set duration snakeLength + 1;
       ]
     ]
 
     ask patches with [duration > 0] [
+      set pcolor red;
       set duration (duration - 1);
     ]
 
     ask patches with [pcolor != green and duration <= 0] [
       set pcolor black;
-
+      ask turtles-here [
+        die;
+      ]
     ]
 
     let foodExists false;
@@ -90,6 +99,10 @@ to go
 
     wait 1 / speed;
   ][
+    set highscore (max (list score highscore));
+    ask patch (min-pxcor + 4.5) (max-pycor - 1) [
+      set plabel (word "Highscore: " highscore);
+    ]
     stop;
   ]
   tick;
@@ -257,12 +270,12 @@ NIL
 1
 
 MONITOR
-20
-324
-77
-369
-score
-score
+28
+298
+106
+343
+NIL
+highscore
 17
 1
 11
@@ -478,6 +491,18 @@ line half
 true
 0
 Line -7500403 true 150 0 150 150
+
+monster
+false
+0
+Polygon -7500403 true true 75 150 90 195 210 195 225 150 255 120 255 45 180 0 120 0 45 45 45 120
+Circle -16777216 true false 165 60 60
+Circle -16777216 true false 75 60 60
+Polygon -7500403 true true 225 150 285 195 285 285 255 300 255 210 180 165
+Polygon -7500403 true true 75 150 15 195 15 285 45 300 45 210 120 165
+Polygon -7500403 true true 210 210 225 285 195 285 165 165
+Polygon -7500403 true true 90 210 75 285 105 285 135 165
+Rectangle -7500403 true true 135 165 165 270
 
 pentagon
 false
