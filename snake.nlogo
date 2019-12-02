@@ -150,9 +150,9 @@ end
 
 to eat
 
-  let countFoodsHere (count (turtle-set foods-here foods-on neighbors))
+  let countFoodsHere (count (turtle-set foods-here foods-on neighbors4))
 
-  ask (turtle-set foods-here foods-on neighbors) [
+  ask (turtle-set foods-here foods-on neighbors4) [
     die;
   ]
 
@@ -214,7 +214,7 @@ end
 to addInput [input]
 
   if (length inputBuffer) < bufferLimit [
-    set inputBuffer insert-item (length inputBuffer) inputBuffer input;
+    set inputBuffer lput input inputBuffer;
   ]
 
 end
@@ -302,7 +302,7 @@ NIL
 T
 OBSERVER
 NIL
-NIL
+R
 NIL
 NIL
 1
@@ -387,7 +387,7 @@ T
 T
 OBSERVER
 NIL
-NIL
+P
 NIL
 NIL
 1
@@ -401,48 +401,56 @@ maxFoods
 maxFoods
 0
 10
-5.0
+10.0
 1
 1
 NIL
 HORIZONTAL
 
 @#$#@#$#@
-## WHAT IS IT?
+# Snake
 
-(a general understanding of what the model is trying to show or explain)
+## How to play
 
-## HOW IT WORKS
+- The snake is constantly moving.
+- Your objective is to get as long as you can by eating the fish!
+- Use the W, A, S, and D keys to change the direction your snake is moving.
 
-(what rules the agents use to create the overall behavior of the model)
+## Credits and References
 
-## HOW TO USE IT
+- Sam Belliveau: Inspiration for input buffer
+- Alvin Li: Code Reviewer
+- Jeremy Ku-Benjet: Tester 
+- Dad: Tester
 
-(how to use the model, including a description of each of the items in the Interface tab)
+## Changelog
 
-## THINGS TO NOTICE
+12/2/2019
 
-(suggested things for the user to notice while running the model)
+- Add credits and references
+- Add hotkeys for restart and go/pause
+- Change insert-item on input buffer to lput to maintain compatibility with Netlogo 6.0.1
+- Change area which snake will eat fish to neighbors4 instead of neighbors
 
-## THINGS TO TRY
+12/1/2019
 
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
-
-## EXTENDING THE MODEL
-
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
-
-## NETLOGO FEATURES
-
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
-
-## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
-
-## CREDITS AND REFERENCES
-
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+- Add input buffer, storing last 3 inputs, and executes the
+latest one per go loop.  This gives more precision to rapid
+inputs, and also prevents said rapid inputs from causing the
+snake to turn back on itself before a go loop has fully
+moved the snake away.
+- Add a snake head that is a happy face, which will be sad
+when it loses.
+- Change the food from patches to turtles - namely, fish.
+- Add breeds "foods" and "snakeheads" in order to enable
+ease of expansion on the game, and shape customizability.
+Current default shape of foods is fish.
+- Add highscore
+- Add new color globals: "tailColor", "snakeColor",
+"foodColor", and "backgroundColor"
+- Now spawns in multiple foods, at a random rate up to the
+maximum foods (which is at default 5).
+- Food now moves around sporatically.
 @#$#@#$#@
 default
 true
@@ -770,7 +778,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
