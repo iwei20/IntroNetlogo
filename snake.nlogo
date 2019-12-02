@@ -1,155 +1,278 @@
-globals [score snakeLength gameOver speed highscore]
-patches-own [duration]
+breed [snakeheads snakehead]
+breed [foods food]
+globals [
+  score ; Current score
+  snakeLength ; Current snake length
+  gameOver ; State game state
+  speed ; Speed at which the snake moves
+  highscore ; Player's highscore
+  snakeColor ; Color of snake
+  foodColor ; Color of food
+  backgroundColor ; Color of background
+  tailColor ; Color of last patch of snake body
+  inputBuffer ; To promote precise input and prevent snake from moving back on self
+  bufferLimit ; How many inputs will be stored in the buffer
+]
+
+patches-own [
+  duration ; Duration left of which the snake body will remain on the patch
+]
 
 to setup
+
+  ; Reset everything except for highscore variable
   ct;
   cd;
   cp;
-  cro 1 [
+
+  ; Colors!
+  set snakeColor red;
+  set foodColor green;
+  set backgroundColor black;
+  set tailColor yellow;
+
+  ; Shapes!
+  set-default-shape snakeheads "face happy";
+  set-default-shape foods "fish";
+
+  ; Reset speed and score
+  set speed 12;
+  set score 0;
+
+  ; Color background
+  ask patches [
+    set pcolor backgroundColor;
+  ]
+
+  ; Set up the snake head
+  create-ordered-snakeheads 1 [
     set size 1.5;
-    set color red;
-    set pcolor red;
+    set color snakeColor;
+    set pcolor snakeColor;
     set snakeLength 3;
-    set shape "face happy"
   ]
-  ask patch (min-pxcor + 3) max-pycor [
-    set plabel (word "Score: " score);
+
+  ; Set up initial fish
+  foreach (range 0 (random maxFoods)) [
+    spawnFood;
   ]
-  ask one-of patches with [pxcor != [pxcor] of turtle 0 and pycor != [pycor] of turtle 0] [
-    set pcolor green;
-    sprout 1 [
-      set color green;
-      set shape "apple";
-      set size 1.5;
-    ]
-  ]
+
+  ; Reset all body parts
   ask patches [
     set duration 0;
   ]
-  set speed 12;
-  set score 0;
-  ask patch (min-pxcor + 3) max-pycor [
+
+  ask patch 0 max-pycor [
     set plabel (word "Score: " score);
   ]
-  ask patch (min-pxcor + 4.5) (max-pycor - 1) [
+
+  ask patch 0 (max-pycor - 1) [
     set plabel (word "Highscore: " highscore);
   ]
+
   set gameOver false;
+
+  set inputBuffer (list);
+  set bufferLimit 3;
+
 end
 
 to go
-  ifelse not gameOver [
-    ask turtle 0[
-      fd 1;
-      if [duration] of patch-here > 0 [
-        ask patch 0 0 [
-          set plabel "Game over";
-        ]
-        set gameOver true;
-      ]
-      ask patch-here [
-        set duration snakeLength + 1;
-      ]
-    ]
 
-    ask patches with [duration > 0] [
-      set pcolor red;
-      set duration (duration - 1);
-    ]
-
-    ask patches with [pcolor != green and duration <= 0] [
-      set pcolor black;
-      ask turtles-here [
-        die;
-      ]
-    ]
-
-    let foodExists false;
-    ask patches with [pcolor = green] [
-      set foodExists true;
-    ]
-
-    if not foodExists [
-      ask one-of patches with [pcolor != red and pxcor != [pxcor] of turtle 0 and pycor != [pycor] of turtle 0] [
-        set pcolor green;
-        ask turtles with [color = green] [
-          die;
-        ]
-        sprout 1 [
-          set color green;
-          set shape "apple";
-          set size 1.5;
-        ]
-      ]
-      ask turtle 0[
-        fd 1;
-        set pcolor red;
-        ask patch-here [
-          set duration snakeLength + 1;
-        ]
-      ]
-      set score (score + 1);
-      set speed (speed + 0.5);
-      set snakeLength (snakeLength + 1);
-    ]
-
-    ask patch (min-pxcor + 3) max-pycor [
-      set plabel (word "Score: " score);
-    ]
-
-    wait 1 / speed;
-  ][
-    set highscore (max (list score highscore));
-    ask patch (min-pxcor + 4.5) (max-pycor - 1) [
-      set plabel (word "Highscore: " highscore);
-    ]
+  if gameOver [
     stop;
   ]
-  tick;
-end
 
-to GO-UP
-  ask turtles [
-    if heading != 180 [
-      set heading 0;
+  executeInputBuffer;
+
+  ask patches [
+
+    set duration max (list 0 (duration - 1));
+
+    ifelse duration > 0 [
+
+      ifelse duration = 1 [
+        ; Color tail
+        set pcolor tailColor;
+      ][
+        ; Color snake body, decrease duration on which a body part will stay on patch
+        set pcolor snakeColor;
+      ]
+
+    ][
+
+      ; Decolor patches the snake body has left
+      set pcolor backgroundColor;
+
     ]
   ]
-end
 
-to GO-RIGHT
-  ask turtles [
-    if heading != 270 [
-      set heading 90;
+  ; Update score
+  ask patch 0 max-pycor [
+    set plabel (word "Score: " score);
+  ]
+
+  ask snakeheads [
+
+    eat;
+    ; Move forward
+    fd 1;
+
+    ; Edit the current patch
+    ask patch-here [
+
+      ; Check body collision; if nothing is here, then set it to body.
+      ifelse duration > 0 [
+        stopGame;
+      ][
+        set duration snakeLength + 1;
+      ]
+
+    ]
+
+  ]
+
+  ; Move the food
+  if count foods > 0  [
+    ask foods with [random 2 = 0] [
+      move-to one-of (patch-set neighbors);
     ]
   ]
+
+  if count foods < maxFoods and random 3 = 0 [
+    spawnFood;
+  ]
+
+  ; Delay between loops (equivalent to snake speed)
+  wait 1 / speed;
+
 end
 
-to GO-LEFT
-  ask turtles [
-    if heading != 90 [
-      set heading 270;
-    ]
+to eat
+
+  let countFoodsHere (count (turtle-set foods-here foods-on neighbors))
+
+  ask (turtle-set foods-here foods-on neighbors) [
+    die;
   ]
+
+  foreach (range 0 countFoodsHere) [
+    ; Increase turtle's length and move it forward
+    fd 1;
+    set pcolor snakeColor;
+
+    ask patch-here [
+      set duration snakeLength + 1;
+    ]
+
+    ; Change vars
+    set score (score + 1);
+    set speed (speed + 0.5);
+    set snakeLength (snakeLength + 1);
+  ]
+
 end
 
-to GO-DOWN
-  ask turtles [
-    if heading != 0 [
-      set heading 180;
+to spawnFood
+
+  ; Spawn a new fish on a random patch
+  ask one-of patches with [duration = 0] [
+    sprout-foods 1 [
+      set color foodColor;
+      set size 1.5;
     ]
   ]
+
+end
+
+to stopGame
+
+  ; Game ends
+  ask patch 0 0 [
+    set plabel "Game over";
+  ]
+
+  ask turtle 0 [
+    set shape "face sad";
+  ]
+
+  set highscore (max (list score highscore));
+
+  ask patch 0 (max-pycor - 1) [
+    set plabel (word "Highscore: " highscore);
+  ]
+
+  ask foods [
+    set label "haha loser";
+  ]
+
+  set gameOver true;
+
+end
+
+; Add an input to the buffer
+to addInput [input]
+
+  if (length inputBuffer) < bufferLimit [
+    set inputBuffer insert-item (length inputBuffer) inputBuffer input;
+  ]
+
+end
+
+; An input buffer, as the name implies, stores the next few inputs.
+; This is useful for preventing the snake from turning back on its own body through
+; two inputs in a single go loop.
+; Additionally, it helps increase precise control over inputs.
+to executeInputBuffer
+
+  if (length inputBuffer) > 0 [
+    let currentInput (item 0 inputBuffer)
+
+    ifelse currentInput = "up" [
+      turn 0;
+    ][
+      ifelse currentInput = "right" [
+        turn 90;
+      ][
+        ifelse currentInput = "down" [
+          turn 180;
+        ][
+          ifelse currentInput = "left" [
+            turn -90;
+          ][
+            error "Invalid input!";
+          ]
+        ]
+      ]
+    ]
+
+    set inputBuffer remove-item 0 inputBuffer;
+
+  ]
+
+end
+
+; Snake movement
+to turn [angle]
+
+  ask turtle 0 [
+    if heading != (angle - 180) mod 360 [
+      set heading angle mod 360;
+    ]
+  ]
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+348
 10
-647
+785
 448
 -1
 -1
 13.0
 1
-10
+16
 1
 1
 1
@@ -168,11 +291,11 @@ ticks
 30.0
 
 BUTTON
-30
-33
-103
-66
-NIL
+76
+74
+149
+107
+restart
 setup
 NIL
 1
@@ -185,12 +308,12 @@ NIL
 1
 
 BUTTON
-77
-192
-140
-225
+74
+193
+144
+226
 up
-GO-UP
+addInput \"up\"
 NIL
 1
 T
@@ -207,7 +330,7 @@ BUTTON
 144
 258
 down
-GO-DOWN
+addInput \"down\"
 NIL
 1
 T
@@ -219,12 +342,12 @@ NIL
 1
 
 BUTTON
-141
-226
-206
-259
+143
+225
+208
+258
 right
-GO-RIGHT
+addInput \"right\"
 NIL
 1
 T
@@ -236,12 +359,12 @@ NIL
 1
 
 BUTTON
-15
-224
-78
-257
+12
+225
+75
+258
 left
-GO-LEFT
+addInput \"left\"
 NIL
 1
 T
@@ -253,11 +376,11 @@ NIL
 1
 
 BUTTON
-78
-134
-141
-167
-NIL
+70
+133
+153
+166
+go/pause
 go
 T
 1
@@ -269,16 +392,20 @@ NIL
 NIL
 1
 
-MONITOR
-28
-298
-106
-343
-NIL
-highscore
-17
+SLIDER
+29
+25
+201
+58
+maxFoods
+maxFoods
+0
+10
+5.0
 1
-11
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -643,7 +770,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.1
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
