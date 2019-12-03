@@ -12,6 +12,7 @@ globals [
   tailColor ; Color of last patch of snake body
   inputBuffer ; To promote precise input and prevent snake from moving back on self
   bufferLimit ; How many inputs will be stored in the buffer
+  maxFoods ; Max number of fish on screen
 ]
 
 patches-own [
@@ -38,6 +39,8 @@ to setup
   ; Reset speed and score
   set speed 12;
   set score 0;
+
+  set maxFoods 10;
 
   ; Color background
   ask patches [
@@ -392,21 +395,6 @@ NIL
 NIL
 1
 
-SLIDER
-29
-25
-201
-58
-maxFoods
-maxFoods
-0
-10
-10.0
-1
-1
-NIL
-HORIZONTAL
-
 @#$#@#$#@
 # Snake
 
@@ -414,6 +402,7 @@ HORIZONTAL
 
 - The snake is constantly moving.
 - Your objective is to get as long as you can by eating the fish!
+- Avoid hitting your own body, or the game will end.
 - Use the W, A, S, and D keys to change the direction your snake is moving.
 
 ## Credits and References
@@ -427,8 +416,10 @@ HORIZONTAL
 
 12/2/2019
 
+- Add how to play section
 - Add credits and references
 - Add hotkeys for restart and go/pause
+- Move changelog to info tab
 - Change insert-item on input buffer to lput to maintain compatibility with Netlogo 6.0.1
 - Change area which snake will eat fish to neighbors4 instead of neighbors
 
@@ -778,7 +769,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.1
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
