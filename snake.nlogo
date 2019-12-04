@@ -403,12 +403,15 @@ NIL
 - The snake is constantly moving.
 - Your objective is to get as long as you can by eating the fish!
 - Avoid hitting your own body, or the game will end.
+- The fish are constantly movign!
 - Use the W, A, S, and D keys to change the direction your snake is moving.
 
 ## Credits and References
 
 - Sam Belliveau: Inspiration for input buffer
 - Alvin Li: Code Reviewer
+- Eric Chen: Tester
+- Gregory: Tester
 - Jeremy Ku-Benjet: Tester 
 - Dad: Tester
 
