@@ -6,4 +6,4 @@ Class/Group projects with Netlogo
 
 ### Finished projects
 - [Snake](snake.nlogo)
-- [Animation](animation.nlogo)
+- [Animation](squares.nlogo)
