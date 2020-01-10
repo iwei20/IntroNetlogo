@@ -1,5 +1,9 @@
 breed [cursors cursor]
+breed [nodes node]
+breed [binaryNodes binaryNode]
 cursors-own [toggleVisibility]
+nodes-own [data references connectNode draw]
+binaryNodes-own [data left_ right_ connectNode draw]
 
 to-report cursors.new [x y cursSize cursColor showOnInit?]
 
@@ -24,22 +28,54 @@ to-report cursors.new [x y cursSize cursColor showOnInit?]
 
 end
 
+to-report nodes.new [visualX visualY visualSize nodeData nodeReferences]
+
+  let toReport nobody;
+
+  create-ordered-nodes 1 [
+
+    setxy visualX visualY;
+    set shape "circle";
+    set size visualSize;
+    set data nodeData;
+    set references (turtle-set nodeReferences);
+    if count references > 0 [
+      create-links-with references;
+    ]
+
+    set connectNode [[nodeToConnect] ->
+      set references (turtle-set references nodeToConnect);
+      create-link-with nodeToConnect;
+    ]
+
+    set toReport self;
+
+  ]
+
+  report toReport
+
+end
+
+to-report binaryNodes.new [visualX visualY visualSize nodeData leftNode rightNode]
+
+  let superNode nodes.new visualX visualY visualSize nodeData nobody
+
+  ask superNode [
+
+    set breed binaryNodes;
+    set shape "circle";
+    set left_ leftNode;
+    set right_ rightNode;
+
+  ]
+
+  report superNode;
+end
+
 to main
   let currCursor cursors.new 0 0 3 white false;
 
-  while [true] [
-    every 0.3 [
-      ask currCursor [run toggleVisibility];
-    ]
-
-    if mouse-down? and mouse-inside? [
-
-      ask currCursor [
-        setxy mouse-xcor mouse-ycor;
-      ]
-
-    ]
-  ]
+  let root binaryNodes.new 0 10 2 12 (binaryNodes.new -4 6 2 7 nobody (binaryNodes.new -2 2 2 10 nobody nobody)) (binaryNodes.new 4 6 2 3 (binaryNodes.new 2 2 2 5 nobody nobody) (binaryNodes.new 6 2 2 6 nobody (binaryNodes.new 4 6 2 1 nobody nobody)));
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
