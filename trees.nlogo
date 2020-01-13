@@ -1,4 +1,4 @@
-globals [mouse currState currentMoveIter currentEditIter currentCreaIter creaState]
+globals [mouse currState currentMoveIter currentEditIter currentCreaIter creaState currEditNode]
 breed [cursors cursor]
 breed [nodes node]
 breed [binaryNodes binaryNode]
@@ -7,7 +7,7 @@ breed [nums num]
 cursors-own [toggleVisibility]
 binaryNodes-own [data visualNum left_ right_ deleteAll toggleColor setPos connectLeft connectRight]
 mouseCursors-own [pressedLast? previousDrag updatePos dragNodeHere updatePressed]
-nums-own [numberString numberTurtles updateNumTurts updateNum]
+nums-own [numberString numberTurtles updateNumTurts updateNum moveTurts]
 
 ; Currently unused
 to-report cursors.new [x y cursSize cursColor showOnInit?]
@@ -81,6 +81,15 @@ to-report nums.new [posX posY number]
 
     ]
 
+    set moveTurts [[x y] ->
+      let toMoveX x - xcor;
+      let toMoveY y - ycor;
+      ask numberTurtles [
+        setxy (xcor + toMoveX) (ycor + toMoveY);
+      ]
+      setxy x y;
+    ]
+
     (run updateNum number);
     set toReport self;
   ]
@@ -124,8 +133,7 @@ to-report binaryNodes.new [visualX visualY visualSize nodeData leftNode rightNod
     set setPos [[x y] ->
       setxy x y;
       ask visualNum [
-        setxy x y;
-        run updateNumTurts;
+        (run moveTurts x y);
       ]
     ]
 
@@ -169,13 +177,13 @@ to-report mouseCursors.new
       ifelse mouse-down? [
         ifelse previousDrag != nobody [
           ask previousDrag [
-            (run setPos [xcor] of myself [ycor] of myself);
+            (run setPos (min (list (15.5 - (count [numberTurtles] of visualNum / 2)) (max (list (-15.5 + (count [numberTurtles] of visualNum / 2)) [xcor] of myself)))) (min (list 15.5 (max (list -15.5 [ycor] of myself)))));
           ]
         ][
           let prev nobody;
           if any? (binaryNodes in-radius 1.5) [
             ask max-one-of (binaryNodes in-radius 1.5) [who] [
-              (run setPos [xcor] of myself [ycor] of myself);
+              (run setPos (min (list 15.5 (max (list -15.5 [xcor] of myself)))) (min (list 15.5 (max (list -15.5 [ycor] of myself)))));
               set prev self;
             ]
           ]
@@ -227,7 +235,15 @@ to editNode
     set currentEditIter 1;
   ]
   ifelse currState = "edit" [
+    ask mouse [
+      ; There is no need to use pressed, as the current node will always be
+      ; on top because there is no asynchrous linking
+      if mouse-down? and mouse-inside? [
+        ask max-one-of (binaryNodes in-radius 1.5) [who] [
 
+        ]
+      ]
+    ]
   ][
     set currentEditIter 0;
     stop;
@@ -253,9 +269,9 @@ to newNode
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-350
+342
 10
-787
+779
 448
 -1
 -1
@@ -277,7 +293,7 @@ GRAPHICS-WINDOW
 0
 1
 ticks
-30.0
+60.0
 
 CHOOSER
 22
@@ -287,7 +303,7 @@ CHOOSER
 algorithm
 algorithm
 "Level order transversal" "Inorder transversal" "Preorder transversal" "Postorder transversal" "Insertion" "Deletion" "Tree sort" "Find tree height" "Find distance between two nodes" "Self-balancing"
-0
+1
 
 INPUTBOX
 43
@@ -318,10 +334,10 @@ NIL
 1
 
 BUTTON
-185
-190
-295
-223
+177
+10
+287
+43
 Move nodes
 moveNodes
 T
@@ -335,10 +351,10 @@ NIL
 1
 
 BUTTON
-181
-235
-307
-268
+177
+43
+303
+76
 Edit a node
 editNode
 T
@@ -352,10 +368,10 @@ NIL
 1
 
 BUTTON
-175
-282
-319
-315
+177
+76
+321
+109
 Create new node
 newNode
 T
@@ -369,10 +385,10 @@ NIL
 1
 
 BUTTON
-17
-190
-171
-223
+165
+181
+319
+214
 Run the algorithm!
 runAlg
 NIL
@@ -381,6 +397,57 @@ T
 OBSERVER
 NIL
 NIL
+NIL
+NIL
+1
+
+BUTTON
+17
+238
+72
+271
+1
+input 1
+NIL
+1
+T
+OBSERVER
+NIL
+1
+NIL
+NIL
+1
+
+BUTTON
+72
+238
+127
+271
+2
+input 2
+NIL
+1
+T
+OBSERVER
+NIL
+2
+NIL
+NIL
+1
+
+BUTTON
+127
+238
+182
+271
+3
+input 3
+NIL
+1
+T
+OBSERVER
+NIL
+3
 NIL
 NIL
 1
@@ -854,7 +921,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
