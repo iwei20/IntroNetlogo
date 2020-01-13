@@ -1,9 +1,10 @@
 breed [cursors cursor]
 breed [nodes node]
 breed [binaryNodes binaryNode]
+breed [mouseCursors mouseCursor]
 cursors-own [toggleVisibility]
-nodes-own [data references connectNode draw]
-binaryNodes-own [data left_ right_ connectNode draw]
+binaryNodes-own [data left_ right_ deleteAll toggleColor]
+mouseCursors-own [pressedLast? dragNodeHere updatePressed]
 
 to-report cursors.new [x y cursSize cursColor showOnInit?]
 
@@ -28,66 +29,100 @@ to-report cursors.new [x y cursSize cursColor showOnInit?]
 
 end
 
-to-report nodes.new [visualX visualY visualSize nodeData nodeReferences]
-
-  let toReport nobody;
-
-  create-ordered-nodes 1 [
-
-    setxy visualX visualY;
-    set shape "circle";
-    set size visualSize;
-    set data nodeData;
-    set references (turtle-set nodeReferences);
-    if count references > 0 [
-      create-links-with references;
-    ]
-
-    set connectNode [[nodeToConnect] ->
-      set references (turtle-set references nodeToConnect);
-      create-link-with nodeToConnect;
-    ]
-
-    set toReport self;
-
-  ]
-
-  report toReport
+to-report numbers.new [data]
 
 end
 
 to-report binaryNodes.new [visualX visualY visualSize nodeData leftNode rightNode]
 
-  let superNode nodes.new visualX visualY visualSize nodeData nobody
+  let toReport nobody;
 
-  ask superNode [
+  create-ordered-binaryNodes 1 [
 
+    setxy visualX visualY;
+    set size visualSize;
     set breed binaryNodes;
     set shape "circle";
+    set data nodeData;
     set left_ leftNode;
     set right_ rightNode;
+    create-links-with (turtle-set leftNode rightNode);
 
+    ; Utilize post-order bfs to delete
+    set deleteAll [[] ->
+      if any? (turtle-set leftNode rightNode) [
+        ask (turtle-set leftNode rightNode) [
+          run deleteAll
+        ]
+      ]
+      die;
+    ]
+
+    hatch 1 [
+
+    ]
+
+    set toggleColor [[toColor] ->
+      set color toColor
+    ]
+
+    set toReport self;
   ]
 
-  report superNode;
+  report toReport;
 end
 
-to main
+to-report mouseCursors.new
+
+  let toReport nobody;
+
+  create-ordered-mouseCursors 1 [
+
+    ht;
+    set pressedLast? false;
+
+    set updatePressed [[] ->
+      ifelse mouse-down? [
+        set pressedLast? true;
+      ][
+        set pressedLast? false;
+      ]
+    ]
+
+    set dragNodeHere [[] ->
+      if mouse-down? [
+        ask binaryNodes in-radius 2 [
+          move-to myself;
+        ]
+      ]
+    ]
+
+    set toReport self;
+  ]
+
+end
+
+to bfs []
+
+end
+
+to setup
   let currCursor cursors.new 0 0 3 white false;
 
   let root binaryNodes.new 0 10 2 12 (binaryNodes.new -4 6 2 7 nobody (binaryNodes.new -2 2 2 10 nobody nobody)) (binaryNodes.new 4 6 2 3 (binaryNodes.new 2 2 2 5 nobody nobody) (binaryNodes.new 6 2 2 6 nobody (binaryNodes.new 4 6 2 1 nobody nobody)));
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-10
-647
-448
+318
+21
+755
+459
 -1
 -1
 13.0
 1
-10
+16
 1
 1
 1
@@ -104,6 +139,54 @@ GRAPHICS-WINDOW
 1
 ticks
 30.0
+
+CHOOSER
+22
+115
+260
+160
+algorithm
+algorithm
+"Level order transversal" "Inorder transversal" "Preorder transversal" "Postorder transversal" "Insertion" "Deletion" "Tree sort" "Construct tree from inorder and preorder" "Find tree height" "Find distance between two nodes" "Self-balancing"
+7
+
+INPUTBOX
+43
+368
+262
+428
+d
+NIL
+1
+0
+String
+
+BUTTON
+22
+10
+85
+43
+NIL
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+CHOOSER
+22
+58
+114
+103
+Mode
+Mode
+"Edit" "Move"
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -146,6 +229,133 @@ default
 true
 0
 Polygon -7500403 true true 150 5 40 250 150 205 260 250
+
+0
+false
+0
+Line -7500403 true 105 105 120 75
+Line -7500403 true 120 75 150 60
+Line -7500403 true 150 60 180 75
+Line -7500403 true 180 75 195 105
+Line -7500403 true 105 105 105 195
+Line -7500403 true 195 105 195 195
+Line -7500403 true 105 195 120 225
+Line -7500403 true 120 225 150 240
+Line -7500403 true 150 240 180 225
+Line -7500403 true 180 225 195 195
+
+1
+false
+0
+Line -7500403 true 105 90 150 60
+Line -7500403 true 150 60 150 240
+Line -7500403 true 105 240 195 240
+
+2
+false
+0
+Line -7500403 true 105 240 195 240
+Line -7500403 true 105 240 195 135
+Line -7500403 true 195 135 195 105
+Line -7500403 true 195 105 180 75
+Line -7500403 true 180 75 150 60
+Line -7500403 true 150 60 120 75
+Line -7500403 true 120 75 105 105
+
+3
+false
+0
+Line -7500403 true 105 105 120 75
+Line -7500403 true 120 75 150 60
+Line -7500403 true 150 60 180 75
+Line -7500403 true 180 75 195 105
+Line -7500403 true 195 105 180 135
+Line -7500403 true 180 135 150 150
+Line -7500403 true 150 150 180 165
+Line -7500403 true 180 165 195 195
+Line -7500403 true 195 195 180 225
+Line -7500403 true 180 225 150 240
+Line -7500403 true 150 240 120 225
+Line -7500403 true 120 225 105 195
+
+4
+false
+0
+Line -7500403 true 150 60 105 150
+Line -7500403 true 105 150 195 150
+Line -7500403 true 150 60 150 240
+
+5
+false
+0
+Line -7500403 true 180 60 105 60
+Line -7500403 true 105 60 105 135
+Line -7500403 true 105 225 150 240
+Line -7500403 true 150 240 180 225
+Line -7500403 true 180 225 195 180
+Line -7500403 true 195 180 180 150
+Line -7500403 true 180 150 150 135
+Line -7500403 true 105 135 150 135
+
+6
+false
+0
+Line -7500403 true 120 225 150 240
+Line -7500403 true 150 240 180 225
+Line -7500403 true 120 225 105 195
+Line -7500403 true 105 195 120 165
+Line -7500403 true 120 165 150 150
+Line -7500403 true 150 150 180 165
+Line -7500403 true 180 165 195 195
+Line -7500403 true 195 195 180 225
+Line -7500403 true 105 135 105 195
+Line -7500403 true 105 135 120 90
+Line -7500403 true 120 90 135 75
+Line -7500403 true 135 75 165 60
+Line -7500403 true 165 60 180 60
+
+7
+false
+0
+Line -7500403 true 105 60 195 60
+Line -7500403 true 195 60 105 240
+
+8
+false
+0
+Line -7500403 true 150 60 120 75
+Line -7500403 true 120 75 105 105
+Line -7500403 true 105 105 120 135
+Line -7500403 true 120 135 150 150
+Line -7500403 true 150 150 120 165
+Line -7500403 true 180 135 150 150
+Line -7500403 true 150 150 180 165
+Line -7500403 true 150 60 180 75
+Line -7500403 true 120 225 150 240
+Line -7500403 true 180 225 150 240
+Line -7500403 true 195 105 180 135
+Line -7500403 true 180 75 195 105
+Line -7500403 true 180 165 195 195
+Line -7500403 true 105 195 120 225
+Line -7500403 true 120 165 105 195
+Line -7500403 true 195 195 180 225
+
+9
+false
+0
+Line -7500403 true 120 75 150 60
+Line -7500403 true 150 60 180 75
+Line -7500403 true 180 75 195 105
+Line -7500403 true 120 75 105 105
+Line -7500403 true 105 105 120 135
+Line -7500403 true 120 135 150 150
+Line -7500403 true 150 150 180 135
+Line -7500403 true 180 135 195 105
+Line -7500403 true 195 105 195 165
+Line -7500403 true 195 165 180 210
+Line -7500403 true 180 210 165 225
+Line -7500403 true 165 225 135 240
+Line -7500403 true 120 240 135 240
 
 airplane
 true
@@ -447,7 +657,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.1
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
