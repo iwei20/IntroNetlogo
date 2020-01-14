@@ -1,4 +1,4 @@
-globals [mouse currState currentMoveIter currentEditIter currentCreaIter creaState currEditNode]
+globals [mouse currState currentMoveIter currentEditIter currentCreaIter creaState currEditNode selecting?]
 breed [cursors cursor]
 breed [nodes node]
 breed [binaryNodes binaryNode]
@@ -205,6 +205,7 @@ to setup
   reset-ticks
   set mouse mouseCursors.new;
   set currState "none";
+  set selecting? false;
   let root binaryNodes.new 0 10 2 12 (binaryNodes.new -4 6 2 7 nobody (binaryNodes.new -2 2 2 10 nobody nobody)) (binaryNodes.new 4 6 2 3 (binaryNodes.new 2 2 2 5 nobody nobody) (binaryNodes.new 6 2 2 6 nobody (binaryNodes.new 4 -2 2 1 nobody nobody)));
 end
 
@@ -229,20 +230,60 @@ to moveNodes
   ]
 end
 
+to input [toInput]
+  if selecting? [
+    ifelse toInput = "enter" [
+      ask currEditNode [
+        ask visualNum [
+          ifelse toInput = "del" [
+            (run updateNum but-last numberString);
+          ][
+            (run updateNum (word numberString toInput));
+          ]
+        ]
+      ]
+    ][
+      ask cursors [die];
+      set selecting? false;
+    ]
+  ]
+end
+
 to editNode
+
   if currentEditIter = 0 [
     set currState "edit";
     set currentEditIter 1;
   ]
   ifelse currState = "edit" [
-    ask mouse [
-      ; There is no need to use pressed, as the current node will always be
-      ; on top because there is no asynchrous linking
+    ifelse not selecting? [
+
+      ask cursors [die];
       if mouse-down? and mouse-inside? [
-        ask max-one-of (binaryNodes in-radius 1.5) [who] [
+        ask mouse [
+          ; There is no need to use pressed, as the current node will always be
+          ; on top because there is no asynchrous linking
+          show any? (binaryNodes in-radius 1.5);
+          if any? (binaryNodes in-radius 1.5)[
+            ask max-one-of (binaryNodes in-radius 1.5) [who] [
+              set currEditNode self;
+            ]
+            set selecting? true;
+            reset-timer;
+          ]
 
         ]
       ]
+
+      if selecting? [
+        let lastNumber max-one-of ([numberTurtles] of [visualNum] of currEditNode) [xcor]
+        let s cursors.new ([xcor] of lastNumber + 0.5) [ycor] of lastNumber 3 white false;
+      ]
+
+    ][
+
+
+
     ]
   ][
     set currentEditIter 0;
@@ -306,10 +347,10 @@ algorithm
 1
 
 INPUTBOX
-43
-368
-262
-428
+41
+395
+260
+455
 d
 NIL
 1
@@ -448,6 +489,159 @@ T
 OBSERVER
 NIL
 3
+NIL
+NIL
+1
+
+BUTTON
+17
+273
+72
+306
+4
+input 4
+NIL
+1
+T
+OBSERVER
+NIL
+4
+NIL
+NIL
+1
+
+BUTTON
+72
+273
+127
+306
+5
+input 5
+NIL
+1
+T
+OBSERVER
+NIL
+5
+NIL
+NIL
+1
+
+BUTTON
+127
+273
+182
+306
+6
+input 6
+NIL
+1
+T
+OBSERVER
+NIL
+6
+NIL
+NIL
+1
+
+BUTTON
+21
+317
+84
+350
+7
+input 7
+NIL
+1
+T
+OBSERVER
+NIL
+7
+NIL
+NIL
+1
+
+BUTTON
+83
+317
+146
+350
+8
+input 8
+NIL
+1
+T
+OBSERVER
+NIL
+8
+NIL
+NIL
+1
+
+BUTTON
+145
+317
+208
+350
+9
+input 9
+NIL
+1
+T
+OBSERVER
+NIL
+9
+NIL
+NIL
+1
+
+BUTTON
+208
+317
+271
+350
+0
+input 0
+NIL
+1
+T
+OBSERVER
+NIL
+0
+NIL
+NIL
+1
+
+BUTTON
+214
+238
+293
+271
+Delete
+input \"del\"
+NIL
+1
+T
+OBSERVER
+NIL
+P
+NIL
+NIL
+1
+
+BUTTON
+215
+270
+286
+303
+Enter
+input \"enter\"
+NIL
+1
+T
+OBSERVER
+NIL
+;
 NIL
 NIL
 1
