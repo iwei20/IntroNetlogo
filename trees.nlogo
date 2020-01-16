@@ -296,6 +296,7 @@ to setup
   set currCreaParent nobody;
   set currCreaLink nobody;
   set sideDetermined nobody;
+  set Output "";
 
   ; Hidden cursor that will move to number
   let s cursors.new 0 0 2 white false;
@@ -713,7 +714,7 @@ CHOOSER
 algorithm
 algorithm
 "Level order traversal" "Inorder traversal" "Preorder traversal" "Postorder traversal" "Find tree height" "Find distance between two nodes" "Convert to search tree" "Self-balancing"
-3
+1
 
 BUTTON
 37
