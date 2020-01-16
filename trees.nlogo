@@ -1,13 +1,59 @@
-globals [mouse currState currentMoveIter currentEditIter currentCreaIter creaState currEditNode selecting?]
-breed [cursors cursor]
 breed [nodes node]
 breed [binaryNodes binaryNode]
+breed [cursors cursor]
 breed [mouseCursors mouseCursor]
 breed [nums num]
-cursors-own [toggleVisibility]
-binaryNodes-own [data visualNum left_ right_ deleteAll toggleColor setPos connectLeft connectRight]
-mouseCursors-own [pressedLast? previousDrag updatePos dragNodeHere updatePressed]
-nums-own [numberString numberTurtles updateNumTurts updateNum moveTurts]
+
+globals [
+  mouse
+  currState
+  currentMoveIter
+  currentEditIter
+  currentCreaIter
+  currentDelIter
+  creaState
+  currEditNode
+  currCreaParent
+  currCreaNode
+  currCreaLink
+  sideDetermined
+  root
+]
+
+binaryNodes-own [
+  data
+  visualNum
+  left_
+  right_
+  deleteAll
+  setPos
+  connectLeft
+  connectRight
+  flash
+  free
+]
+
+cursors-own [
+  toggleVisibility
+  storeSize
+]
+
+mouseCursors-own [
+  pressedLast?
+  previousDrag
+  updatePos
+  dragNodeHere
+  updatePressed
+]
+
+nums-own [
+  numberString
+  numberTurtles
+  updateNumTurts
+  updateNum
+  moveTurts
+  free
+]
 
 ; Currently unused
 to-report cursors.new [x y cursSize cursColor showOnInit?]
@@ -24,7 +70,7 @@ to-report cursors.new [x y cursSize cursColor showOnInit?]
 
     ; Use to flash on and off when editing.
     set toggleVisibility [[] ->
-      set hidden? not hidden?;
+      set hidden? not hidden?
     ]
 
     set toReport self;
@@ -34,23 +80,34 @@ to-report cursors.new [x y cursSize cursColor showOnInit?]
 
 end
 
+; Used to display numbers in place of netlogo's crappy text labels
 to-report nums.new [posX posY number]
   let toReport nobody;
 
   create-ordered-nums 1 [
     ht;
     setxy posX posY;
+    ; Actual numbers with shapes
     set numberTurtles (turtle-set);
 
-    ; Primary usage for changing the number
+    ; Changing the number.
     set updateNum [[newNum] ->
       set numberString (word newNum);
       run updateNumTurts;
     ]
 
-    ; ALWAYS UPDATE AFTER MOVING
+    ; Moves the turtles without killing them
+    set moveTurts [[x y] ->
+      let toMoveX x - xcor;
+      let toMoveY y - ycor;
+      ask numberTurtles [
+        setxy (xcor + toMoveX) (ycor + toMoveY);
+      ]
+      setxy x y;
+    ]
+
+    ; Updates the turtles only
     set updateNumTurts [[] ->
-      ; Each digit is 1 units apart.
       ask numberTurtles [die];
 
       ; Determine the position of the middle or middle-right number
@@ -61,9 +118,9 @@ to-report nums.new [posX posY number]
         set middle (xcor);
       ]
 
-      ; Position each number individually
+      ; Position each number individually, moving 1 right of the previous
       foreach (range length numberString) [[digPos] ->
-        let toAdd nobody;set toReport self;
+        let toAdd nobody;
         hatch 1 [
           set breed turtles;
           let digit (item digPos [numberString] of myself);
@@ -81,13 +138,9 @@ to-report nums.new [posX posY number]
 
     ]
 
-    set moveTurts [[x y] ->
-      let toMoveX x - xcor;
-      let toMoveY y - ycor;
-      ask numberTurtles [
-        setxy (xcor + toMoveX) (ycor + toMoveY);
-      ]
-      setxy x y;
+    set free [[] ->
+      ask numberTurtles [die];
+      die;
     ]
 
     (run updateNum number);
@@ -97,6 +150,7 @@ to-report nums.new [posX posY number]
   report toReport;
 end
 
+; The nodes that we are using - along with all the normal data stuff
 to-report binaryNodes.new [visualX visualY visualSize nodeData leftNode rightNode]
 
   let toReport nobody;
@@ -108,11 +162,49 @@ to-report binaryNodes.new [visualX visualY visualSize nodeData leftNode rightNod
     set breed binaryNodes;
     set shape "circle";
     set data nodeData;
-    set left_ leftNode;
-    set right_ rightNode;
-    create-links-to (turtle-set leftNode rightNode);
-    set toReport self;
 
+    ; Connection methods
+    set connectLeft [[newLeft] ->
+      set left_ newLeft;
+      create-links-to (turtle-set left_) [
+        set label "Left";
+      ]
+    ]
+
+    set connectRight [[newRight] ->
+      set right_ newRight;
+      create-links-to (turtle-set right_) [
+        set label "Right";
+      ]
+    ]
+
+    (run connectLeft leftNode);
+    (run connectRight rightNode);
+
+    ; Utilize post-order bfs to delete the subtree.
+    set deleteAll [[] ->
+      if any? (turtle-set left_ right_) [
+        ask (turtle-set left_ right_) [
+          run deleteAll;
+        ]
+      ]
+      run free;
+    ]
+
+    set flash [[toColor] ->
+      set color toColor;
+      wait 0.4;
+      set color grey;
+    ]
+
+    set free [[] ->
+      ask visualNum [
+        run free;
+      ]
+      die;
+    ]
+
+    set toReport self;
   ]
 
   let temp nums.new [xcor] of toReport [ycor] of toReport [data] of toReport;
@@ -120,16 +212,7 @@ to-report binaryNodes.new [visualX visualY visualSize nodeData leftNode rightNod
   ask toReport [
     set visualNum temp;
 
-    ; Utilize post-order bfs to delete
-    set deleteAll [[] ->
-      if any? (turtle-set leftNode rightNode) [
-        ask (turtle-set leftNode rightNode) [
-          run deleteAll;
-        ]
-      ]
-      die;
-    ]
-
+    ; Needed for moving numbers along
     set setPos [[x y] ->
       setxy x y;
       ask visualNum [
@@ -137,20 +220,13 @@ to-report binaryNodes.new [visualX visualY visualSize nodeData leftNode rightNod
       ]
     ]
 
-    set connectLeft [[newLeft] ->
-      set left_ newLeft;
-      create-link-to left_;
-    ]
-
-    set connectRight [[newRight] ->
-      set right_ newRight;
-      create-link-to right_;
-    ]
   ]
 
   report toReport;
 end
 
+; Only one should exist; used to help with in-radius functions, and to check
+; presses vs holds, though there is currently no need for htat
 to-report mouseCursors.new
 
   let toReport nobody;
@@ -161,6 +237,7 @@ to-report mouseCursors.new
     set pressedLast? false;
     set previousDrag nobody;
 
+    ; Move to mouse, should be consistently run
     set updatePos [[] ->
       setxy mouse-xcor mouse-ycor;
     ]
@@ -173,24 +250,30 @@ to-report mouseCursors.new
       ]
     ]
 
+    ; Drags thenode to mouse cursor within radius 1.5; prioritizes previously held, then
+    ; top to bottom.
     set dragNodeHere [[] ->
-      ifelse mouse-down? [
+      ifelse mouse-down? and mouse-inside? [
+
         ifelse previousDrag != nobody [
           ask previousDrag [
-            (run setPos (min (list (15.5 - (count [numberTurtles] of visualNum / 2)) (max (list (-15.5 + (count [numberTurtles] of visualNum / 2)) [xcor] of myself)))) (min (list 15.5 (max (list -15.5 [ycor] of myself)))));
+            ; Move with boundaries on edges of screen
+            (run setPos
+              (min (list (15.5 - (count [numberTurtles] of visualNum / 2)) (max (list (-15.5 + (count [numberTurtles] of visualNum / 2)) [xcor] of myself))))
+              (min (list 15.5 (max (list -15.5 [ycor] of myself))))
+            );
           ]
         ][
-          let prev nobody;
+          ; Check for new possible candidates
           if any? (binaryNodes in-radius 1.5) [
-            ask max-one-of (binaryNodes in-radius 1.5) [who] [
-              (run setPos (min (list 15.5 (max (list -15.5 [xcor] of myself)))) (min (list 15.5 (max (list -15.5 [ycor] of myself)))));
-              set prev self;
-            ]
+            set previousDrag max-one-of (binaryNodes in-radius 1.5) [who];
           ]
-          set previousDrag prev;
         ]
+
       ][
+
         set previousDrag nobody;
+
       ]
     ]
 
@@ -201,91 +284,255 @@ to-report mouseCursors.new
 end
 
 to setup
-  ca
-  reset-ticks
+  ca;
+  reset-ticks;
+
+  ; Initialise stuffs
   set mouse mouseCursors.new;
   set currState "none";
-  set selecting? false;
-  let root binaryNodes.new 0 10 2 12 (binaryNodes.new -4 6 2 7 nobody (binaryNodes.new -2 2 2 10 nobody nobody)) (binaryNodes.new 4 6 2 3 (binaryNodes.new 2 2 2 5 nobody nobody) (binaryNodes.new 6 2 2 6 nobody (binaryNodes.new 4 -2 2 1 nobody nobody)));
+  set currEditNode nobody;
+  set currCreaNode nobody;
+  set currCreaParent nobody;
+  set currCreaLink nobody;
+  set sideDetermined nobody;
+
+  ; Hidden cursor that will move to number
+  let s cursors.new 0 0 2 white false;
+
+  ; Initial tree
+  set root binaryNodes.new 0 10 2 "" nobody nobody;
+end
+
+to sample1
+  ask root [run deleteAll];
+  set root binaryNodes.new 0 10 2 12 (binaryNodes.new -4 6 2 7 nobody (binaryNodes.new -2 2 2 10 nobody nobody)) (binaryNodes.new 4 6 2 3 (binaryNodes.new 2 2 2 5 nobody nobody) (binaryNodes.new 6 2 2 6 nobody (binaryNodes.new 4 -2 2 1 nobody nobody)));
+end
+
+to sample2
+  ask root [run deleteAll];
+  set root binaryNodes.new 0 10 2 4 (binaryNodes.new -4 6 2 2 (binaryNodes.new -6 2 2 1 nobody nobody) (binaryNodes.new -2 2 2 3 nobody nobody)) (binaryNodes.new 4 6 2 5 nobody nobody)
+end
+
+to sample3
+  ask root [run deleteAll];
+  set root binaryNodes.new 0 10 2 12 (binaryNodes.new -4 6 2 7 nobody (binaryNodes.new -2 2 2 10 nobody nobody)) (binaryNodes.new 4 6 2 3 (binaryNodes.new 2 2 2 5 nobody nobody) (binaryNodes.new 6 2 2 6 nobody (binaryNodes.new 4 -2 2 1 nobody nobody)));
 end
 
 to runAlg
+  set Output "";
   set currState "none";
+
+  ; Inorder traversal:
+  if algorithm = "Inorder traversal" [
+    let toOutput (list)
+
+    let dfs nobody;
+    set dfs [[bin_] ->
+      if bin_ != nobody [
+        ; Left, root, right
+        (run dfs [left_] of bin_)
+        ask bin_ [
+          (run flash green)
+        ]
+        set toOutput lput ([data] of bin_) toOutput
+        (run dfs [right_] of bin_)
+      ]
+    ]
+
+    (run dfs root)
+    set Output (word toOutput);
+  ]
+
+  ; Preorder traversal:
+  if algorithm = "Preorder traversal" [
+    let toOutput (list)
+
+    let dfs nobody;
+    set dfs [[bin_] ->
+      if bin_ != nobody [
+        ; Root, left, right
+        ask bin_ [
+          (run flash green)
+        ]
+        set toOutput lput ([data] of bin_) toOutput
+        (run dfs [left_] of bin_)
+        (run dfs [right_] of bin_)
+      ]
+    ]
+
+    (run dfs root)
+    set Output (word toOutput);
+  ]
+
+  ; Postorder traversal:
+  if algorithm = "Postorder traversal" [
+    let toOutput (list)
+
+    let dfs nobody;
+    set dfs [[bin_] ->
+      if bin_ != nobody [
+        ; Left, right, root
+        (run dfs [left_] of bin_)
+        (run dfs [right_] of bin_)
+        ask bin_ [
+          (run flash green)
+        ]
+        set toOutput lput ([data] of bin_) toOutput
+      ]
+    ]
+
+    (run dfs root)
+    set Output (word toOutput);
+  ]
+
+  ; Level order traversal:
+  if algorithm = "Level order traversal" [
+    let toOutput (list root)
+    let bfs nobody;
+
+    set bfs [[binList] ->
+
+      if not empty? binList [
+
+        let nextLevel (list)
+        foreach binList [x ->
+          if [left_] of x != nobody [
+            set nextLevel lput [left_] of x nextLevel;
+            ask [left_] of x [
+              (run flash green)
+            ]
+          ]
+          if [right_] of x != nobody [
+            set nextLevel lput [right_] of x nextLevel;
+            ask [right_] of x [
+              (run flash green)
+            ]
+          ]
+        ]
+
+        set toOutput (sentence toOutput nextLevel)
+
+        (run bfs nextLevel)
+      ]
+
+    ]
+
+    ask root [
+      (run flash green)
+    ]
+    (run bfs (list root))
+
+    set Output (word map [i -> [data] of i] toOutput);
+  ]
+
 end
 
 to moveNodes
+  ; Cancel all other states on first iteration
   if currentMoveIter = 0 [
     set currState "move";
     set currentMoveIter 1;
   ]
-  ; Interrupt all other functions
+
   ifelse currState = "move" [
+
     ask mouse [
       run updatePos;
       run dragNodeHere;
     ]
+
   ][
+
     set currentMoveIter 0;
     stop;
+
   ]
 end
 
 to input [toInput]
-  if selecting? [
-    ifelse toInput = "enter" [
+  if currEditNode != nobody [
+
+    ifelse toInput != "enter" [
       ask currEditNode [
+
         ask visualNum [
           ifelse toInput = "del" [
-            (run updateNum but-last numberString);
+            if length numberString > 0 [
+              (run updateNum but-last numberString);
+            ]
+            ask cursors [
+              set xcor (xcor - 0.5);
+            ]
           ][
-            (run updateNum (word numberString toInput));
+            ifelse length numberString < 3 [
+              (run updateNum (word numberString toInput));
+            ][
+              ask patch 16 16 [
+                set plabel "Too large!"
+              ]
+            ]
+            ask cursors [
+              set xcor (xcor + 0.5);
+            ]
           ]
         ]
+
       ]
+
     ][
       ask cursors [die];
-      set selecting? false;
     ]
   ]
 end
 
 to editNode
-
+  ; Stop all others
   if currentEditIter = 0 [
     set currState "edit";
     set currentEditIter 1;
+    ask patch 16 16 [
+      set plabel "Cannot delete the root node!"
+    ]
   ]
   ifelse currState = "edit" [
-    ifelse not selecting? [
 
-      ask cursors [die];
+    ask mouse [
+      run updatePos;
+      ; There is no need to use pressed, as the current node will always be
+      ; on top because there is no asynchrous linking
       if mouse-down? and mouse-inside? [
-        ask mouse [
-          ; There is no need to use pressed, as the current node will always be
-          ; on top because there is no asynchrous linking
-          show any? (binaryNodes in-radius 1.5);
-          if any? (binaryNodes in-radius 1.5)[
-            ask max-one-of (binaryNodes in-radius 1.5) [who] [
-              set currEditNode self;
-            ]
-            set selecting? true;
-            reset-timer;
+        ifelse any? (binaryNodes in-radius 1.5)[
+          ask max-one-of (binaryNodes in-radius 1.5) [who] [
+            set currEditNode self;
           ]
 
+          reset-timer;
+        ][
+          ask cursors [ht];
+          set currEditNode nobody;
         ]
       ]
 
-      if selecting? [
-        let lastNumber max-one-of ([numberTurtles] of [visualNum] of currEditNode) [xcor]
-        let s cursors.new ([xcor] of lastNumber + 0.5) [ycor] of lastNumber 3 white false;
+    ]
+
+    if currEditNode != nobody [
+      let cursorPos [xcor] of [visualNum] of currEditNode;
+      if any? ([numberTurtles] of [visualNum] of currEditNode) [
+        set cursorPos [xcor] of max-one-of ([numberTurtles] of [visualNum] of currEditNode) [xcor] + 0.5;
       ]
 
-    ][
-
-
+      ask cursors [
+        setxy (cursorPos) ([ycor] of [visualNum] of currEditNode);
+        if timer <= 0.3 and timer >= 0.25 [
+          run toggleVisibility;
+          reset-timer;
+        ]
+      ]
 
     ]
+
   ][
+    ask cursors [ht];
     set currentEditIter 0;
     stop;
   ]
@@ -295,16 +542,137 @@ to newNode
   if currentCreaIter = 0 [
     set currState "crea";
     set currentCreaIter 1;
+    ask patch 16 16 [
+      set plabel "Drag from a node to extend from";
+    ]
   ]
   ifelse currState = "crea" [
-    ask patch 16 16 [
-      set plabel "Pick a node to extend from";
+
+    ask mouse [
+      run updatePos;
+    ]
+    if mouse-inside? [
+      ifelse mouse-down? [
+
+        ifelse currCreaNode = nobody [
+
+          if any? ([binaryNodes in-radius 1.5] of mouse)[
+
+            set currCreaParent [max-one-of (binaryNodes in-radius 1.5) [who]] of mouse;
+
+            ifelse count (turtle-set [left_] of currCreaParent [right_] of currCreaParent) = 2 [
+
+              ask patch 16 16 [
+                set plabel "That node already has two children!";
+              ]
+
+              set currCreaParent nobody;
+
+            ][
+              ask patch 16 16 [
+                set plabel "Drag from a node to extend from";
+              ]
+
+              set currCreaNode binaryNodes.new ([xcor] of currCreaParent) ([ycor] of currCreaParent) 2 "" nobody nobody
+
+              if [left_] of currCreaParent != nobody [
+                set sideDetermined "Right"
+              ]
+              if [right_] of currCreaParent != nobody [
+                set sideDetermined "Left"
+              ]
+              ask currCreaParent [
+                create-link-to currCreaNode [
+                  set label sideDetermined;
+                  set currCreaLink self;
+                ]
+              ]
+            ]
+
+          ]
+
+        ][
+
+          ask mouse [
+            set previousDrag currCreaNode;
+            if sideDetermined = nobody [
+              ask currCreaLink [
+                ifelse [xcor] of currCreaNode < [xcor] of currCreaParent [
+                  set label "Left"
+                ][
+                  set label "Right";
+                ]
+              ]
+            ]
+            run dragNodeHere;
+          ]
+
+        ]
+
+      ][
+
+        ; On release
+        if currCreaLink != nobody and [label] of currCreaLink = "Right" [
+          ask currCreaParent [
+            set right_ currCreaNode;
+          ]
+        ]
+        if currCreaLink != nobody and [label] of currCreaLink = "Left" [
+          ask currCreaParent [
+            set left_ currCreaNode;
+          ]
+        ]
+        set currCreaParent nobody;
+        set currCreaLink nobody;
+        set sideDetermined nobody;
+        set currCreaNode nobody;
+
+      ]
+
     ]
   ][
     ask patch 16 16 [
       set plabel "";
     ]
     set currentCreaIter 0;
+    stop;
+  ]
+end
+
+to deleteNode
+  if currentDelIter = 0 [
+    set currState "del";
+    set currentDelIter 1;
+    ask patch 16 16 [
+      set plabel "Click on the node you want to delete";
+    ]
+  ]
+  ifelse currState = "del" [
+    ask mouse [
+      (run updatePos)
+      if mouse-down? and mouse-inside? [
+        if any? (binaryNodes in-radius 1.5)[
+          ask max-one-of (binaryNodes in-radius 1.5) [who] [
+            ifelse self = root [
+              ask patch 16 16 [
+                set plabel "Cannot delete the root node!"
+              ]
+            ][
+              ask patch 16 16 [
+                set plabel "Click on the node you want to delete";
+              ]
+              run deleteAll
+
+            ]
+          ]
+        ]
+      ]
+    ]
+  ][
+    ask patch 16 16 [
+      set plabel "";
+    ]
+    set currentDelIter 0;
     stop;
   ]
 end
@@ -337,31 +705,31 @@ ticks
 60.0
 
 CHOOSER
-22
-115
-291
-160
+21
+117
+290
+162
 algorithm
 algorithm
-"Level order transversal" "Inorder transversal" "Preorder transversal" "Postorder transversal" "Insertion" "Deletion" "Tree sort" "Find tree height" "Find distance between two nodes" "Self-balancing"
-1
+"Level order traversal" "Inorder traversal" "Preorder traversal" "Postorder traversal" "Find tree height" "Find distance between two nodes" "Convert to search tree" "Self-balancing"
+3
 
 INPUTBOX
-41
-395
-260
-455
-d
-NIL
+21
+162
+303
+235
+Output
+[1 3 2 5 4]
 1
 0
 String
 
 BUTTON
-29
-55
-92
-88
+37
+26
+100
+59
 NIL
 setup
 NIL
@@ -375,10 +743,10 @@ NIL
 1
 
 BUTTON
-177
-10
-287
-43
+187
+461
+296
+494
 Move nodes
 moveNodes
 T
@@ -392,10 +760,10 @@ NIL
 1
 
 BUTTON
-177
-43
-303
-76
+187
+397
+296
+430
 Edit a node
 editNode
 T
@@ -409,10 +777,10 @@ NIL
 1
 
 BUTTON
-177
-76
-321
-109
+187
+365
+296
+398
 Create new node
 newNode
 T
@@ -426,10 +794,10 @@ NIL
 1
 
 BUTTON
-165
-181
-319
-214
+21
+235
+175
+268
 Run the algorithm!
 runAlg
 NIL
@@ -443,10 +811,10 @@ NIL
 1
 
 BUTTON
-17
-238
-72
-271
+12
+364
+67
+397
 1
 input 1
 NIL
@@ -460,10 +828,10 @@ NIL
 1
 
 BUTTON
-72
-238
-127
-271
+67
+364
+122
+397
 2
 input 2
 NIL
@@ -477,10 +845,10 @@ NIL
 1
 
 BUTTON
-127
-238
-182
-271
+122
+364
+177
+397
 3
 input 3
 NIL
@@ -494,10 +862,10 @@ NIL
 1
 
 BUTTON
-17
-273
-72
-306
+12
+396
+67
+429
 4
 input 4
 NIL
@@ -511,10 +879,10 @@ NIL
 1
 
 BUTTON
-72
-273
-127
-306
+67
+396
+122
+429
 5
 input 5
 NIL
@@ -528,10 +896,10 @@ NIL
 1
 
 BUTTON
-127
-273
-182
-306
+122
+396
+177
+429
 6
 input 6
 NIL
@@ -545,10 +913,10 @@ NIL
 1
 
 BUTTON
-21
-317
-84
-350
+12
+428
+67
+461
 7
 input 7
 NIL
@@ -562,10 +930,10 @@ NIL
 1
 
 BUTTON
-83
-317
-146
-350
+67
+428
+122
+461
 8
 input 8
 NIL
@@ -579,10 +947,10 @@ NIL
 1
 
 BUTTON
-145
-317
-208
-350
+122
+428
+177
+461
 9
 input 9
 NIL
@@ -596,10 +964,10 @@ NIL
 1
 
 BUTTON
-208
-317
-271
-350
+67
+461
+122
+494
 0
 input 0
 NIL
@@ -613,10 +981,10 @@ NIL
 1
 
 BUTTON
-214
-238
-293
-271
+12
+461
+67
+494
 Delete
 input \"del\"
 NIL
@@ -630,10 +998,10 @@ NIL
 1
 
 BUTTON
-215
-270
-286
-303
+122
+461
+177
+494
 Enter
 input \"enter\"
 NIL
@@ -644,6 +1012,87 @@ NIL
 ;
 NIL
 NIL
+1
+
+BUTTON
+187
+429
+296
+462
+Delete a node
+deleteNode
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+819
+40
+969
+60
+Sample Trees
+16
+0.0
+1
+
+BUTTON
+816
+70
+911
+103
+Just A Tree
+sample1
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+816
+102
+1059
+135
+Try Running Inorder Traversal On This
+sample2
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+19
+328
+169
+348
+Tree Editing
+16
+0.0
+1
+
+TEXTBOX
+24
+91
+217
+131
+Pick an algorithm to run
+16
+0.0
 1
 
 @#$#@#$#@
@@ -1115,7 +1564,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.1
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
