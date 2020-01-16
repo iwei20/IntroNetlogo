@@ -5,6 +5,7 @@ breed [mouseCursors mouseCursor]
 breed [nums num]
 
 globals [
+  Output
   mouse
   currState
   currentMoveIter
@@ -714,17 +715,6 @@ algorithm
 "Level order traversal" "Inorder traversal" "Preorder traversal" "Postorder traversal" "Find tree height" "Find distance between two nodes" "Convert to search tree" "Self-balancing"
 3
 
-INPUTBOX
-21
-162
-303
-235
-Output
-[1 3 2 5 4]
-1
-0
-String
-
 BUTTON
 37
 26
@@ -795,9 +785,9 @@ NIL
 
 BUTTON
 21
-235
+211
 175
-268
+244
 Run the algorithm!
 runAlg
 NIL
@@ -1094,6 +1084,17 @@ Pick an algorithm to run
 16
 0.0
 1
+
+MONITOR
+21
+162
+293
+211
+NIL
+Output
+17
+1
+12
 
 @#$#@#$#@
 ## WHAT IS IT?
