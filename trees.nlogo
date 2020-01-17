@@ -28,6 +28,7 @@ binaryNodes-own [
   right_
   deleteAll
   setPos
+  updateData
   connectLeft
   connectRight
   flash
@@ -221,6 +222,12 @@ to-report binaryNodes.new [visualX visualY visualSize nodeData leftNode rightNod
       ]
     ]
 
+    set updateData [[newData] ->
+      set data newData;
+      ask visualNum [
+        (run updateNum newData);
+      ]
+    ]
   ]
 
   report toReport;
@@ -317,117 +324,195 @@ end
 
 to sample3
   ask root [run deleteAll];
-  set root binaryNodes.new 0 10 2 12 (binaryNodes.new -4 6 2 7 nobody (binaryNodes.new -2 2 2 10 nobody nobody)) (binaryNodes.new 4 6 2 3 (binaryNodes.new 2 2 2 5 nobody nobody) (binaryNodes.new 6 2 2 6 nobody (binaryNodes.new 4 -2 2 1 nobody nobody)));
+  set root binaryNodes.new 0 10 2 "" nobody nobody;
+end
+
+to-report inorder
+  let toOutput (list)
+
+  let dfs nobody;
+  set dfs [[bin_] ->
+    if bin_ != nobody [
+      ; Left, root, right
+      (run dfs [left_] of bin_)
+      ask bin_ [
+        (run flash green)
+      ]
+      set toOutput lput ([data] of bin_) toOutput
+      (run dfs [right_] of bin_)
+    ]
+  ]
+
+  (run dfs root)
+  report (word toOutput);
+end
+
+to-report preorder
+  let toOutput (list)
+
+  let dfs nobody;
+  set dfs [[bin_] ->
+    if bin_ != nobody [
+      ; Root, left, right
+      ask bin_ [
+        (run flash green)
+      ]
+      set toOutput lput ([data] of bin_) toOutput
+      (run dfs [left_] of bin_)
+      (run dfs [right_] of bin_)
+    ]
+  ]
+
+  (run dfs root)
+  report (word toOutput);
+end
+
+to-report postorder
+  let toOutput (list)
+
+  let dfs nobody;
+  set dfs [[bin_] ->
+    if bin_ != nobody [
+      ; Left, right, root
+      (run dfs [left_] of bin_)
+      (run dfs [right_] of bin_)
+      ask bin_ [
+        (run flash green)
+      ]
+      set toOutput lput ([data] of bin_) toOutput
+    ]
+  ]
+
+  (run dfs root)
+  report (word toOutput);
+end
+
+to-report levelorder
+  let toOutput (list root)
+  let bfs nobody;
+
+  set bfs [[binList] ->
+
+    if not empty? binList [
+
+      let nextLevel (list)
+      foreach binList [x ->
+        if [left_] of x != nobody [
+          set nextLevel lput [left_] of x nextLevel;
+          ask [left_] of x [
+            (run flash green)
+          ]
+        ]
+        if [right_] of x != nobody [
+          set nextLevel lput [right_] of x nextLevel;
+          ask [right_] of x [
+            (run flash green)
+          ]
+        ]
+      ]
+
+      set toOutput (sentence toOutput nextLevel)
+
+      (run bfs nextLevel)
+    ]
+
+  ]
+
+  ask root [
+    (run flash green)
+  ]
+  (run bfs (list root))
+
+  report (word map [i -> [data] of i] toOutput);
+end
+
+to-report findNodeHeight [bin_]
+  let toReport 0;
+  if bin_ != nobody [
+    ask bin_ [
+      (run flash green)
+    ]
+    set toReport max (list (findNodeHeight [left_] of bin_ + 1) (findNodeHeight [right_] of bin_ + 1));
+  ]
+  report toReport;
+end
+
+to convertSearchTree
+  let tempIn sort read-from-string inorder;
+  set Output tempIn;
+
+  wait 0.5;
+  ; Basically replicate with inorder
+  let conversion nobody;
+  set conversion [[bin_] ->
+    if bin_ != nobody [
+      (run conversion [left_] of bin_)
+      ask bin_ [
+        (run updateData first tempIn)
+        set tempIn but-first tempIn
+        (run flash yellow);
+      ]
+      (run conversion [right_] of bin_)
+    ]
+  ]
+  (run conversion root)
+end
+
+to-report findRange
+  convertSearchTree
+
+  let leftMost [left_] of root
+  let rightMost [right_] of root
+
+  while [[left_] of leftMost != nobody] [
+    set leftMost [left_] of leftMost
+    ask leftMost [
+      (run flash green)
+    ]
+  ]
+  while [[right_] of rightMost != nobody] [
+    set rightMost [right_] of rightMost
+    ask rightMost [
+      (run flash green)
+    ]
+  ]
+
+  report [data] of rightMost - [data] of leftMost;
 end
 
 to runAlg
   set Output "";
   set currState "none";
 
-  ; Inorder traversal:
   if algorithm = "Inorder traversal" [
-    let toOutput (list)
-
-    let dfs nobody;
-    set dfs [[bin_] ->
-      if bin_ != nobody [
-        ; Left, root, right
-        (run dfs [left_] of bin_)
-        ask bin_ [
-          (run flash green)
-        ]
-        set toOutput lput ([data] of bin_) toOutput
-        (run dfs [right_] of bin_)
-      ]
-    ]
-
-    (run dfs root)
-    set Output (word toOutput);
+    set Output inorder;
   ]
 
-  ; Preorder traversal:
   if algorithm = "Preorder traversal" [
-    let toOutput (list)
-
-    let dfs nobody;
-    set dfs [[bin_] ->
-      if bin_ != nobody [
-        ; Root, left, right
-        ask bin_ [
-          (run flash green)
-        ]
-        set toOutput lput ([data] of bin_) toOutput
-        (run dfs [left_] of bin_)
-        (run dfs [right_] of bin_)
-      ]
-    ]
-
-    (run dfs root)
-    set Output (word toOutput);
+    set Output preorder
   ]
 
-  ; Postorder traversal:
   if algorithm = "Postorder traversal" [
-    let toOutput (list)
-
-    let dfs nobody;
-    set dfs [[bin_] ->
-      if bin_ != nobody [
-        ; Left, right, root
-        (run dfs [left_] of bin_)
-        (run dfs [right_] of bin_)
-        ask bin_ [
-          (run flash green)
-        ]
-        set toOutput lput ([data] of bin_) toOutput
-      ]
-    ]
-
-    (run dfs root)
-    set Output (word toOutput);
+    set Output postorder
   ]
 
-  ; Level order traversal:
   if algorithm = "Level order traversal" [
-    let toOutput (list root)
-    let bfs nobody;
-
-    set bfs [[binList] ->
-
-      if not empty? binList [
-
-        let nextLevel (list)
-        foreach binList [x ->
-          if [left_] of x != nobody [
-            set nextLevel lput [left_] of x nextLevel;
-            ask [left_] of x [
-              (run flash green)
-            ]
-          ]
-          if [right_] of x != nobody [
-            set nextLevel lput [right_] of x nextLevel;
-            ask [right_] of x [
-              (run flash green)
-            ]
-          ]
-        ]
-
-        set toOutput (sentence toOutput nextLevel)
-
-        (run bfs nextLevel)
-      ]
-
-    ]
-
-    ask root [
-      (run flash green)
-    ]
-    (run bfs (list root))
-
-    set Output (word map [i -> [data] of i] toOutput);
+    set Output levelorder
   ]
 
+  if algorithm = "Find tree height" [
+    set Output (findNodeHeight root);
+  ]
+
+  if algorithm = "Convert to search tree" [
+    convertSearchTree
+  ]
+
+  if algorithm = "Find range of data in a tree" [
+    set Output findRange
+  ]
 end
+
 
 to moveNodes
   ; Cancel all other states on first iteration
@@ -478,10 +563,14 @@ to input [toInput]
             ]
           ]
         ]
+        ask currEditNode [
+          set data read-from-string [numberString] of visualNum;
+        ]
 
       ]
 
     ][
+      set currEditNode nobody;
       ask cursors [die];
     ]
   ]
@@ -713,8 +802,8 @@ CHOOSER
 162
 algorithm
 algorithm
-"Level order traversal" "Inorder traversal" "Preorder traversal" "Postorder traversal" "Find tree height" "Find distance between two nodes" "Convert to search tree" "Self-balancing"
-1
+"Level order traversal" "Inorder traversal" "Preorder traversal" "Postorder traversal" "Find tree height" "Convert to search tree" "Find range of data in a tree"
+6
 
 BUTTON
 37
@@ -1023,10 +1112,10 @@ NIL
 1
 
 TEXTBOX
-819
-40
-969
-60
+818
+10
+968
+30
 Sample Trees
 16
 0.0
@@ -1052,9 +1141,9 @@ NIL
 BUTTON
 816
 102
-1059
+946
 135
-Try Running Inorder Traversal On This
+Already Binary Tree
 sample2
 NIL
 1
@@ -1096,6 +1185,33 @@ Output
 17
 1
 12
+
+TEXTBOX
+955
+103
+1105
+131
+<- try running inorder traversal on this!
+11
+0.0
+1
+
+BUTTON
+816
+38
+909
+71
+Empty tree
+sample3
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
